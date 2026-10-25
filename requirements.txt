@@ -1,0 +1,3 @@
+# Installs the package (and its dependencies) in editable mode, plus the Gradio demo.
+# For GPU training, install a CUDA build of PyTorch first: https://pytorch.org/get-started/locally/
+-e .[app]

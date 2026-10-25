@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "behavior-detection"
+version = "0.2.0"
+description = "Classroom student-behavior detection with YOLOv8: dataset prep, leak-free split, training, evaluation and a Gradio demo."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Mohammed Fakir", email = "mr.fakir.mohammed@gmail.com" }]
+dependencies = [
+    "ultralytics>=8.3",
+    "albumentations>=2.0",
+    "opencv-python>=4.8",
+    "numpy",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+app = ["gradio>=4.40"]
+dev = ["pytest"]
+
+[project.scripts]
+behavior-detection = "behavior_detection.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,73 @@
+# Single source of truth for the whole pipeline. Paths are relative to the repo root.
+
+classes:
+  - distracted
+  - concentrating
+  - hand_raised
+  - phone
+  - sleeping
+
+paths:
+  raw: data/raw              # images/ + labels/ (YOLO txt), originals only
+  prepared: data/prepared    # generated: images/{train,val,test}, labels/{...}, data.yaml, split.json
+  manifest: data/split.json  # which original image went to which split (committed, for transparency)
+  runs: runs                 # ultralytics output
+  weights: models/best.pt    # model used by `evaluate` and `app` (created by `train`)
+
+split:
+  # Images are split BEFORE any augmentation, so no augmented copy of a training
+  # image can ever land in val/test.
+  ratios: [0.7, 0.2, 0.1]    # train / val / test
+  seed: 42
+
+balance:
+  # Class balancing by augmentation, applied to the TRAIN split only.
+  # Each class is brought up to `target_ratio` x (images of the most common class).
+  enabled: true
+  target_ratio: 0.7
+  seed: 42
+
+augmentation:
+  # Mild, realistic perturbations (lighting, sensor noise, small camera shifts,
+  # video compression). No horizontal flip: it would mirror the scene.
+  brightness_contrast: 0.15
+  gamma: [85, 115]
+  hsv: {hue: 5, sat: 15, val: 10}
+  noise_std: [0.02, 0.05]    # fraction of 255, Gaussian noise
+  blur_limit: [3, 5]
+  shift: 0.03
+  scale: 0.1
+  rotate: 2
+  jpeg_quality: [75, 95]
+
+train:
+  model: yolov8m.pt
+  epochs: 100
+  batch: 16
+  imgsz: 640
+  patience: 20
+  optimizer: AdamW
+  cos_lr: true
+  close_mosaic: 10
+  seed: 42
+  deterministic: true
+  name: student_behavior_detection
+  # Ultralytics-side augmentation
+  hsv_h: 0.015
+  hsv_s: 0.7
+  hsv_v: 0.4
+  degrees: 10.0
+  translate: 0.1
+  scale: 0.9
+  fliplr: 0.5
+  mosaic: 1.0
+  mixup: 0.1
+  copy_paste: 0.1
+
+evaluate:
+  conf: 0.25
+  iou: 0.6
+
+app:
+  conf: 0.25
+  iou: 0.45
