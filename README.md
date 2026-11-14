@@ -6,7 +6,7 @@ The interface keeps the media in the foreground: select a detection, inspect its
 
 ![Image analysis in the React workspace](assets/interface-image.png)
 
-*Real predictions from the included historical weights on a project image. The media is blurred in documentation captures; the interface, counts and annotations are real.*
+*Real predictions from the included historical weights on a project image. Only faces are blurred in the screenshots.*
 
 ## See it in use
 
