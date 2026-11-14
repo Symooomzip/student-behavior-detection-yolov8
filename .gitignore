@@ -24,3 +24,8 @@ yolo11*.pt
 Thumbs.db
 .vscode/
 .idea/
+
+# Local web dependencies and production bundle
+frontend/node_modules/
+frontend/dist/
+.cache/

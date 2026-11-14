@@ -42,7 +42,7 @@ def cmd_evaluate(cfg, args):
 def cmd_app(cfg, args):
     from .app import launch
 
-    launch(cfg, weights=args.weights, share=args.share, port=args.port)
+    launch(cfg, weights=args.weights, port=args.port, device=args.device)
 
 
 def main(argv=None):
@@ -62,9 +62,9 @@ def main(argv=None):
     p.add_argument("--device", default=None)
     p.set_defaults(func=cmd_evaluate)
 
-    p = sub.add_parser("app", help="launch the Gradio demo")
+    p = sub.add_parser("app", help="launch the local React + FastAPI workspace")
     p.add_argument("--weights", help="default: paths.weights from the config")
-    p.add_argument("--share", action="store_true", help="create a public gradio.live link")
+    p.add_argument("--device", default=None, help="e.g. 0, cpu (default: auto)")
     p.add_argument("--port", type=int, default=7860)
     p.set_defaults(func=cmd_app)
 

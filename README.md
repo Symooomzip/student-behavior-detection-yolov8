@@ -1,10 +1,39 @@
 # Student Behavior Detection with YOLOv8
 
-Detect what students are doing in a classroom image, video or live webcam stream: **concentrating, distracted, hand raised, using a phone, sleeping**. YOLOv8-medium fine-tuned on a classroom dataset the team filmed and annotated itself, with a reproducible data pipeline, a leak-free train/val/test split and a Gradio demo.
+A local workspace for reviewing classroom behavior in **images, video and a live camera**. The interface is built with **React + Vite**, with a **FastAPI** server running the existing YOLOv8m model. It detects five classes: concentrating, distracted, hand raised, phone and sleeping.
 
-![Gradio demo: detections on a test image](assets/demo_image_detection.png)
+The interface keeps the media in the foreground: select a detection, inspect its confidence, filter classes and export the result. Labels are in French. There is no account, hosted API or external font dependency.
 
-*The Gradio demo on a classroom image (confidence 0.25, IoU 0.45): the model flags the raised hand, the phones, the distracted and concentrating students. Interface labels are in French.*
+![Image analysis in the React workspace](assets/interface-image.png)
+
+*Real predictions from the included historical weights on a project image. The media is blurred in documentation captures; the interface, counts and annotations are real.*
+
+## See it in use
+
+![Short walkthrough of image and video analysis](assets/interface-demo.gif)
+
+[Watch or download the MP4 walkthrough](assets/interface-demo.mp4).
+
+![Video analysis with playback and exports](assets/interface-video.png)
+
+*The video demonstration uses a short sequence assembled from project images to exercise the real video pipeline. It is not a benchmark or a continuous classroom recording.*
+
+## The workspace
+
+| Mode | What you can do |
+|---|---|
+| Image | Drop a file or use the project example; analyze, select boxes, adjust the confidence filter and export an annotated PNG. |
+| Video | Upload a clip, follow progress, cancel, play or seek the result, and download an annotated H.264 MP4. |
+| Camera | Start explicitly, review processed snapshots with measured request latency, and stop the camera. |
+| Results | Export filtered detections as CSV or JSON; inspect model information and limitations. |
+
+- **Instant display filters:** inference returns detections down to confidence 0.10. Moving the confidence slider or toggling classes filters these results in the browser without rerunning YOLO.
+- **Video processing:** 4 sampled images/s by default, with 2 or 8 available in advanced settings. The actual rate is derived from the source frame rate. Boxes remain visible until the next sampled image; this is detection, not identity tracking. Counts refer to the current sampled image, not unique students.
+- **Exports:** image and CSV/JSON exports use the current display filters. The annotated MP4 uses all classes and the confidence threshold selected when the analysis started. Rerun analysis to change that video's annotations.
+- **Limits:** images up to 25 MB / 25 megapixels; video up to 200 MB / 10 minutes. Video previews and exports are resized to at most 1280 pixels on the longest side and contain no audio.
+- **Local lifecycle:** images and camera snapshots are not retained after the request completes. Video files are temporary, with at most eight retained jobs and two pending/running jobs. Completed jobs expire after one hour without access, with cleanup on a subsequent API request; everything is removed on normal server shutdown. Do not use this local application as an unauthenticated public service.
+
+The model is loaded once, on the first analysis. First-use latency includes model initialization; later timings are measured and shown in the interface. Camera requests run one at a time to avoid a backlog. Inference speed depends on the machine and selected PyTorch device.
 
 ## Team project
 
@@ -75,58 +104,131 @@ The original notebook also cached intermediate results in pickle files. Those ar
 
 ## Quick start
 
-```bash
-git clone https://github.com/Symooomzip/student-behavior-detection-yolov8.git
-cd student-behavior-detection-yolov8
-python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
-pip install -r requirements.txt                       # for GPU training, install a CUDA build of PyTorch first
+Requirements: **Python 3.11+ recommended**, **Node.js 22.12+** (Node 24 also works), and npm. Run these commands from the repository directory. The included `models/best_legacy_run.pt` weights let you try the app without retraining.
+
+### Windows / PowerShell
+
+```powershell
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+
+cd frontend
+npm ci
+npm run build
+cd ..
+
+.venv\Scripts\python.exe -m behavior_detection.cli app --weights models/best_legacy_run.pt
 ```
 
-Try the demo with the included weights (image, video or webcam):
+Open **http://127.0.0.1:7860**. The Python server serves both the API and the built React application. Subsequent starts can use `./scripts/start.ps1`, which rebuilds the frontend and launches the server. Stop with Ctrl+C.
+
+### macOS / Linux
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cd frontend
+npm ci
+npm run build
+cd ..
 behavior-detection app --weights models/best_legacy_run.pt
 ```
 
-Reproduce the whole pipeline:
+The app selects `models/best.pt` when available, otherwise the bundled historical weights. It identifies historical weights in the interface. Use `--weights PATH` to select another compatible model, `--device cpu` or `--device 0` to choose the device, and `--port 7861` to change the local port. For CUDA, install the appropriate [PyTorch build](https://pytorch.org/get-started/locally/) before the project dependencies.
+
+### Frontend development
+
+Keep the API running on port 7860, then open a second terminal:
 
 ```bash
-behavior-detection check       # validate raw labels + class statistics
-behavior-detection prepare     # split, then balance the train split  ->  data/prepared
-behavior-detection train       # a GPU is strongly recommended (a free Colab T4 works); best weights -> models/best.pt
-behavior-detection evaluate    # mAP / precision / recall on val and test
-behavior-detection app         # demo with the weights you just trained
+cd frontend
+npm run dev
 ```
 
-On Colab: `!pip install -q -r requirements.txt` after cloning, then run the same commands.
+Vite serves **http://127.0.0.1:5173** and proxies `/api` to FastAPI. To use a different API port, update the proxy in `frontend/vite.config.js`. Rebuild with `npm run build` before using the Python-served interface again. Camera access requires localhost or HTTPS and browser permission; the app never opens it automatically.
+
+### Reproduce the model pipeline
+
+The existing preparation, training and evaluation commands are unchanged:
+
+```bash
+behavior-detection check
+behavior-detection prepare
+behavior-detection train
+behavior-detection evaluate
+behavior-detection app
+```
+
+A GPU is strongly recommended for training. See `configs/default.yaml` for paths, classes and training settings.
+
+### Checks
+
+```bash
+pip install -e ".[app,dev]"
+python -m pytest -q
+cd frontend
+npm test
+npm run build
+```
+
+Backend tests cover the existing data pipeline, image validation, video sampling, H.264 exports, HTTP range playback and cancellation. They use a small test detector and do not require a GPU. Frontend tests cover video sample lookup, display filtering and CSV generation. The new interface was additionally exercised with the included YOLO weights on an image, a short assembled video and a synthetic browser camera.
+
+### API
+
+Interactive API documentation: **http://127.0.0.1:7860/docs**.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/meta` | Classes, model information, defaults and upload limits |
+| `GET /api/example` | Project example image, when installed |
+| `POST /api/image` | Multipart `file`; optional `iou`; normalized boxes and inference time |
+| `POST /api/videos` | Multipart `file`; optional `sample_fps`, `iou`, `confidence`; returns a job ID |
+| `GET /api/videos/{id}` | State, progress and any processing error |
+| `DELETE /api/videos/{id}` | Request cancellation |
+| `GET /api/videos/{id}/results` | Timestamped sampled detections after completion |
+| `GET /api/videos/{id}/preview.mp4` | Browser-compatible video without painted annotations |
+| `GET /api/videos/{id}/annotated.mp4` | Downloadable annotated video |
+
+### Troubleshooting
+
+- **Connection error:** start the Python server; Vite alone does not run YOLO.
+- **Missing weights:** pass `--weights models/best_legacy_run.pt`, or train your own model. Model class order must match the config.
+- **No detections:** try the included example or a lower confidence threshold; some scenes do not resemble the training data.
+- **No video preview before processing:** the browser may not support the uploaded codec. Analyze it to obtain a compatible MP4.
+- **Camera refused:** allow camera access for localhost, close other apps using it, and retry. Camera snapshots are not stored.
+- **Upgrade from Gradio:** rebuild `frontend/`; the `app` command now starts FastAPI. The former Gradio-specific `--share` option has been removed.
 
 ## Project structure
 
+```text
+frontend/                       React + Vite interface, CSS, filtering/export tests
+  src/App.jsx                   media import, analysis, playback, camera, exports
+  src/styles.css                responsive workspace matching the approved mockup
+  src/results.js                sampled-frame lookup, filtering and export helpers
+  dist/                         production bundle (generated, not committed)
+src/behavior_detection/
+  app.py                        local application launcher
+  web.py                        FastAPI routes and static frontend serving
+  inference.py                  single shared YOLO model and normalized detections
+  video_jobs.py                 bounded jobs, progress, cancellation and MP4 encoding
+  dataset.py, split.py           label validation and seeded data splitting
+  augment.py, prepare.py         training-only augmentation and dataset preparation
+  train.py, evaluate.py          training and evaluation wrappers
+  cli.py                        behavior-detection commands
+configs/default.yaml            model classes, paths and pipeline settings
+models/best_legacy_run.pt        original training weights (see Results caveat)
+data/raw/                       labeled project images; separate usage terms below
+data/split.json                 reproducible split manifest
+assets/                         interface screenshots, demo GIF/MP4 and dataset figure
+scripts/start.ps1               Windows launcher
+tests/                          pipeline and API tests
+notebooks/                      original notebook, retained for reference
 ```
-.
-├── configs/default.yaml        # classes, paths, split, augmentation and training settings
-├── data/
-│   ├── raw/                    # 425 labeled originals (images/ + labels/ + classes.txt)
-│   │   └── unlabeled/          # 5 photos without annotations
-│   └── split.json              # which image is in train / val / test
-├── models/best_legacy_run.pt   # weights of the original run (see the caveat above)
-├── notebooks/                  # the original Colab notebook, kept for reference
-├── src/behavior_detection/
-│   ├── dataset.py              # parsing + validation of YOLO labels
-│   ├── split.py                # seeded split of original images
-│   ├── augment.py              # albumentations pipeline + class balancing
-│   ├── prepare.py              # raw -> data/prepared + data.yaml + manifest
-│   ├── train.py  evaluate.py   # ultralytics wrappers
-│   ├── app.py                  # Gradio demo (image / video / webcam)
-│   └── cli.py                  # `behavior-detection` command
-└── tests/                      # split / leakage / label parsing tests (no GPU needed)
-```
-
-Run the tests with `pip install pytest && pytest`.
 
 ## Tech stack
 
-Python · Ultralytics YOLOv8 · PyTorch · Albumentations · OpenCV · Gradio
+React · Vite · CSS · FastAPI · Uvicorn · Ultralytics YOLOv8 · PyTorch · OpenCV · FFmpeg · Albumentations
 
 ## Need something?
 
