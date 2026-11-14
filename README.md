@@ -2,19 +2,19 @@
 
 A local workspace for reviewing classroom behavior in **images, video and a live camera**. The interface is built with **React + Vite**, with a **FastAPI** server running the existing YOLOv8m model. It detects five classes: concentrating, distracted, hand raised, phone and sleeping.
 
-The interface keeps the media in the foreground: select a detection, inspect its confidence, filter classes and export the result. Labels are in French. There is no account, hosted API or external font dependency.
+The interface keeps the media in the foreground: select a detection, inspect its confidence, filter classes and export the result. There is no account, hosted API or external font dependency.
 
-![Image analysis in the React workspace](assets/faces-only-image.png)
+![Image analysis in the React workspace](assets/english-image.png)
 
 *Real predictions from the included historical weights on a project image. Only faces are blurred in the screenshots and walkthrough; the classroom, gestures, and annotations remain visible.*
 
 ## See it in use
 
-![Short walkthrough of image and video analysis](assets/faces-only-demo.gif)
+![Short walkthrough of image and video analysis](assets/english-demo.gif)
 
-[Watch or download the MP4 walkthrough](assets/faces-only-demo.mp4).
+[Watch or download the MP4 walkthrough](assets/english-demo.mp4).
 
-![Video analysis with playback and exports](assets/faces-only-video.png)
+![Video analysis with playback and exports](assets/english-video.png)
 
 *The video demonstration uses a short sequence assembled from project images to exercise the real video pipeline. It is not a benchmark or a continuous classroom recording.*
 

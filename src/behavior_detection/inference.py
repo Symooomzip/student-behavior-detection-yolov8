@@ -5,8 +5,8 @@ from pathlib import Path
 
 import numpy as np
 
-LABELS = {"distracted": "Distrait", "concentrating": "Concentré", "hand_raised": "Main levée",
-          "phone": "Téléphone", "sleeping": "Sommeil"}
+LABELS = {"distracted": "Distracted", "concentrating": "Focused", "hand_raised": "Hand raised",
+          "phone": "Using phone", "sleeping": "Sleeping"}
 MIN_CONFIDENCE = 0.1
 
 
@@ -22,11 +22,11 @@ class Detector:
         with self._lock:
             if self._model is None:
                 if not self.weights.is_file():
-                    raise FileNotFoundError("Modèle introuvable. Vérifiez le chemin --weights.")
+                    raise FileNotFoundError("Model not found. Check the --weights path.")
                 from ultralytics import YOLO
                 model = YOLO(str(self.weights))
                 if [model.names[i] for i in range(len(model.names))] != self.classes:
-                    raise ValueError("Les classes du modèle ne correspondent pas à configs/default.yaml.")
+                    raise ValueError("The model classes do not match configs/default.yaml.")
                 self._model = model
             started = time.perf_counter()
             result = self._model.predict(frame, conf=MIN_CONFIDENCE, iou=iou, imgsz=640,

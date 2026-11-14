@@ -25,11 +25,11 @@ def decode_image(content):
     try:
         with Image.open(io.BytesIO(content)) as image:
             if image.width * image.height > 25_000_000:
-                raise ValueError("L’image dépasse la limite de 25 mégapixels.")
+                raise ValueError("The image exceeds the 25 megapixel limit.")
             rgb = np.asarray(ImageOps.exif_transpose(image).convert("RGB"))
         return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
-        raise ValueError("Image illisible. Utilisez une image JPG, PNG ou WebP valide.") from exc
+        raise ValueError("Could not read the image. Use a valid JPG, PNG, WebP, or BMP file.") from exc
 
 
 def create_app(cfg=None, weights=None, device=None, detector=None, frontend_dir=None):
@@ -69,7 +69,7 @@ def create_app(cfg=None, weights=None, device=None, detector=None, frontend_dir=
     def example():
         path = root / "data/raw/images/image001.jpg"
         if not path.is_file():
-            raise HTTPException(404, "L’exemple n’est pas disponible dans cette installation.")
+            raise HTTPException(404, "The sample image is unavailable in this installation.")
         return FileResponse(path, media_type="image/jpeg")
 
     @app.post("/api/image")
@@ -77,7 +77,7 @@ def create_app(cfg=None, weights=None, device=None, detector=None, frontend_dir=
         try:
             content = await file.read(IMAGE_LIMIT + 1)
             if len(content) > IMAGE_LIMIT:
-                raise HTTPException(413, "L’image dépasse 25 Mo.")
+                raise HTTPException(413, "The image exceeds the 25 MB limit.")
             frame = await run_in_threadpool(decode_image, content)
             return await run_in_threadpool(engine.predict, frame, iou=iou)
         except (ValueError, FileNotFoundError) as exc:
@@ -87,7 +87,7 @@ def create_app(cfg=None, weights=None, device=None, detector=None, frontend_dir=
         except Exception as exc:
             import logging
             logging.getLogger(__name__).exception("Image inference failed")
-            raise HTTPException(500, "L’analyse a échoué. Consultez le terminal du serveur.") from exc
+            raise HTTPException(500, "Analysis failed. Check the server terminal.") from exc
         finally:
             await file.close()
 
@@ -98,7 +98,7 @@ def create_app(cfg=None, weights=None, device=None, detector=None, frontend_dir=
         suffix = Path(file.filename or "").suffix.lower()
         if suffix not in {".mp4", ".mov", ".avi", ".webm", ".mkv", ".m4v"}:
             await file.close()
-            raise HTTPException(415, "Format non pris en charge. Utilisez MP4, MOV, AVI, WebM ou MKV.")
+            raise HTTPException(415, "Unsupported format. Use MP4, MOV, AVI, WebM, or MKV.")
         path = None
         try:
             with tempfile.NamedTemporaryFile(dir=app.state.temp, suffix=suffix, delete=False) as dest:
@@ -107,7 +107,7 @@ def create_app(cfg=None, weights=None, device=None, detector=None, frontend_dir=
                 while chunk := await file.read(1024 * 1024):
                     size += len(chunk)
                     if size > VIDEO_LIMIT:
-                        raise HTTPException(413, "La vidéo dépasse 200 Mo.")
+                        raise HTTPException(413, "The video exceeds the 200 MB limit.")
                     dest.write(chunk)
             return app.state.jobs.create(path, Path(file.filename).name, sample_fps, iou, confidence)
         except ValueError as exc:
@@ -121,7 +121,7 @@ def create_app(cfg=None, weights=None, device=None, detector=None, frontend_dir=
         try:
             return app.state.jobs.status(key)
         except KeyError as exc:
-            raise HTTPException(404, "Analyse introuvable ou expirée. Relancez le traitement.") from exc
+            raise HTTPException(404, "Analysis not found or expired. Run it again.") from exc
 
     @app.get("/api/videos/{key}")
     def video_status(key: str):
@@ -135,7 +135,7 @@ def create_app(cfg=None, weights=None, device=None, detector=None, frontend_dir=
     @app.get("/api/videos/{key}/results")
     def video_results(key: str):
         if get_job(key)["state"] != "complete":
-            raise HTTPException(409, "L’analyse n’est pas terminée.")
+            raise HTTPException(409, "Analysis is still in progress.")
         return json.loads((app.state.temp / key / "results.json").read_text(encoding="utf-8"))
 
     @app.get("/api/videos/{key}/{kind}.mp4")
@@ -143,13 +143,13 @@ def create_app(cfg=None, weights=None, device=None, detector=None, frontend_dir=
         if kind not in {"preview", "annotated"}:
             raise HTTPException(404)
         if get_job(key)["state"] != "complete":
-            raise HTTPException(409, "L’analyse n’est pas terminée.")
+            raise HTTPException(409, "Analysis is still in progress.")
         return FileResponse(app.state.temp / key / f"{kind}.mp4", media_type="video/mp4",
                             filename="student-behavior-annotated.mp4" if kind == "annotated" else None)
 
     @app.get("/api/{path:path}", include_in_schema=False)
     def missing_api(path: str):
-        raise HTTPException(404, "Route API inconnue.")
+        raise HTTPException(404, "Unknown API route.")
 
     dist = Path(frontend_dir) if frontend_dir else root / "frontend" / "dist"
     if (dist / "index.html").exists():
@@ -157,5 +157,5 @@ def create_app(cfg=None, weights=None, device=None, detector=None, frontend_dir=
     else:
         @app.get("/", include_in_schema=False)
         def build_required():
-            return JSONResponse({"message": "Dans frontend/, exécutez npm install puis npm run build, ou npm run dev."})
+            return JSONResponse({"message": "In frontend/, run npm install followed by npm run build, or use npm run dev."})
     return app

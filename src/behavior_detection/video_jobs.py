@@ -44,7 +44,7 @@ class VideoJobs:
         with self.lock:
             self._prune()
             if sum(j["state"] not in TERMINAL for j in self.jobs.values()) >= 2:
-                raise ValueError("Deux vidéos sont déjà en cours. Annulez une analyse ou attendez sa fin.")
+                raise ValueError("Two videos are already queued or processing. Cancel one or wait for it to finish.")
             if len(self.jobs) >= MAX_JOBS:
                 oldest = next((key for key, j in self.jobs.items() if j["state"] in TERMINAL), None)
                 if oldest:
@@ -104,17 +104,17 @@ class VideoJobs:
                 return
             cap = cv2.VideoCapture(str(source))
             if not cap.isOpened():
-                raise ValueError("Vidéo illisible. Essayez un fichier MP4 ou WebM valide.")
+                raise ValueError("Could not read the video. Try a valid MP4 or WebM file.")
             fps = float(cap.get(cv2.CAP_PROP_FPS))
             frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             width, height = (int(cap.get(p)) for p in (cv2.CAP_PROP_FRAME_WIDTH, cv2.CAP_PROP_FRAME_HEIGHT))
             if not math.isfinite(fps) or not 0 < fps <= 240 or frames <= 0 or min(width, height) <= 0:
-                raise ValueError("Les informations de cette vidéo sont invalides.")
+                raise ValueError("This video has invalid metadata.")
             if frames / fps > MAX_DURATION or width * height > 25_000_000:
-                raise ValueError("Limite vidéo : 10 minutes et 25 mégapixels par image.")
+                raise ValueError("Videos are limited to 10 minutes and 25 megapixels per frame.")
             stride = max(1, round(fps / sample_fps))
             if math.ceil(frames / stride) > MAX_SAMPLES:
-                raise ValueError("Trop d’images à analyser. Réduisez la fréquence d’analyse.")
+                raise ValueError("Too many frames to analyze. Reduce the sampling rate.")
             scale = min(1, 1280 / max(width, height))
             out_w, out_h = max(2, int(width * scale) // 2 * 2), max(2, int(height * scale) // 2 * 2)
             for name in ("preview.mp4", "annotated.mp4"):
@@ -130,14 +130,14 @@ class VideoJobs:
                 if not ok:
                     break
                 if index / fps > MAX_DURATION:
-                    raise ValueError("La vidéo dépasse la limite de 10 minutes.")
+                    raise ValueError("The video exceeds the 10 minute limit.")
                 frame = cv2.resize(frame, (out_w, out_h))
                 if index % stride == 0:
                     result = self.detector.predict(frame, iou=iou)
                     detections = result["detections"]
                     samples.append({"time": round(index / fps, 4), "frame": index, **result})
                     if len(samples) > MAX_SAMPLES:
-                        raise ValueError("La vidéo dépasse la limite d’images analysées.")
+                        raise ValueError("The video exceeds the limit on analyzed frames.")
                 encoders[0].stdin.write(frame.tobytes())
                 annotated = frame.copy()
                 for detection in detections:
@@ -154,13 +154,13 @@ class VideoJobs:
                 if index % max(1, int(fps)) == 0:
                     self._update(key, processed_frames=index, samples=len(samples), progress=min(0.99, index / frames))
             if not index:
-                raise ValueError("Aucune image lisible dans cette vidéo.")
+                raise ValueError("This video contains no readable frames.")
             if index < frames * 0.95:
-                raise ValueError("La lecture s’est interrompue : la vidéo semble tronquée.")
+                raise ValueError("Playback stopped because the video appears incomplete.")
             for encoder in encoders:
                 encoder.stdin.close()
                 if encoder.wait(timeout=60) != 0:
-                    raise ValueError("Échec de l’encodage MP4. Essayez une vidéo plus courte.")
+                    raise ValueError("MP4 encoding failed. Try a shorter video.")
             if cancelled.is_set():
                 self._update(key, state="cancelled")
                 return
@@ -172,7 +172,7 @@ class VideoJobs:
             self._update(key, state="complete", progress=1, processed_frames=index, samples=len(samples),
                          processing_seconds=payload["processing_seconds"])
         except Exception as exc:
-            self._update(key, state="error", error=str(exc) or "Le traitement a échoué.")
+            self._update(key, state="error", error=str(exc) or "Processing failed.")
         finally:
             if cap is not None:
                 cap.release()

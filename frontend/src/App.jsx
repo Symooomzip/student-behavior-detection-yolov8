@@ -12,8 +12,8 @@ const REPOSITORY =
   "https://github.com/Symooomzip/student-behavior-detection-yolov8";
 const MODES = [
   ["image", "Image"],
-  ["video", "Vidéo"],
-  ["camera", "Caméra"],
+  ["video", "Video"],
+  ["camera", "Camera"],
 ];
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -121,7 +121,7 @@ export default function App() {
   );
   const chosen = detections.find((d) => d.id === selected) || null;
   const label = (id) =>
-    meta?.classes.find((c) => c.id === id)?.label || "Comportement";
+    meta?.classes.find((c) => c.id === id)?.label || "Behavior";
   const counts =
     meta?.classes.map((c) => ({
       ...c,
@@ -187,13 +187,13 @@ export default function App() {
     if (!supported.test(value.name)) {
       setError(
         imageMode
-          ? "Choisissez une image JPG, PNG, WebP ou BMP."
-          : "Choisissez une vidéo MP4, MOV, AVI, WebM ou MKV.",
+          ? "Choose a JPG, PNG, WebP, or BMP image."
+          : "Choose an MP4, MOV, AVI, WebM, or MKV video.",
       );
       return;
     }
     if (value.size > (imageMode ? 25 : 200) * 1024 * 1024) {
-      setError(`Le fichier dépasse ${imageMode ? 25 : 200} Mo.`);
+      setError(`The file exceeds the ${imageMode ? 25 : 200} MB limit.`);
       return;
     }
     interrupt();
@@ -235,7 +235,7 @@ export default function App() {
     setVideoResult(null);
     setJob(null);
     setSelected(null);
-    setPhase(mode === "video" ? "Envoi de la vidéo…" : "Analyse de l’image…");
+    setPhase(mode === "video" ? "Uploading video…" : "Analyzing image…");
     try {
       if (mode === "image") {
         const value = await uploadImage(file, iou, abort.signal);
@@ -267,14 +267,14 @@ export default function App() {
           setJob(status);
           setPhase(
             status.state === "queued"
-              ? "En attente du modèle…"
-              : "Analyse et préparation du MP4…",
+              ? "Waiting for the model…"
+              : "Analyzing video and preparing the MP4…",
           );
         }
         if (status.state === "error")
-          throw new Error(status.error || "Le traitement a échoué.");
+          throw new Error(status.error || "Processing failed.");
         if (status.state === "cancelled") {
-          setPhase("Analyse annulée.");
+          setPhase("Analysis canceled.");
           return;
         }
         const value = await json(`/api/videos/${status.id}/results`, {
@@ -289,11 +289,11 @@ export default function App() {
         setSelected(value.frames[0]?.detections[0]?.id ?? null);
         jobId.current = null;
       }
-      setPhase("Analyse terminée.");
+      setPhase("Analysis complete.");
     } catch (e) {
       if (e.name !== "AbortError" && id === sequence.current) {
         setError(e.message);
-        setPhase("Échec de l’analyse.");
+        setPhase("Analysis failed.");
       }
     } finally {
       if (id === sequence.current) {
@@ -309,12 +309,12 @@ export default function App() {
     setError("");
     setResult(null);
     setCameraFrame("");
-    setPhase("Ouverture de la caméra…");
+    setPhase("Starting camera…");
     setBusy(true);
     try {
       if (!navigator.mediaDevices?.getUserMedia)
         throw new Error(
-          "La caméra nécessite localhost ou une connexion HTTPS.",
+          "The camera requires localhost or an HTTPS connection.",
         );
       const media = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 960 }, height: { ideal: 540 } },
@@ -331,7 +331,7 @@ export default function App() {
       cameraRunning.current = true;
       setCameraActive(true);
       setBusy(false);
-      setPhase("Caméra active");
+      setPhase("Camera active");
       const canvas = document.createElement("canvas");
       const context = canvas.getContext("2d");
       while (cameraRunning.current && id === sequence.current) {
@@ -367,13 +367,13 @@ export default function App() {
       if (id === sequence.current && e.name !== "AbortError") {
         setError(
           e.name === "NotAllowedError"
-            ? "Accès caméra refusé. Autorisez la caméra dans votre navigateur puis réessayez."
+            ? "Camera access denied. Allow camera access in your browser and try again."
             : e.name === "NotFoundError"
-              ? "Aucune caméra détectée."
+              ? "No camera detected."
               : e.message,
         );
         stopCamera();
-        setPhase("Caméra arrêtée.");
+        setPhase("Camera stopped.");
       }
     } finally {
       if (id === sequence.current) setBusy(false);
@@ -442,11 +442,11 @@ export default function App() {
         ctx.fillText(text, left + 5, top + font + 1);
       });
       canvas.toBlob((blob) => {
-        if (blob) saveBlob(blob, "detection-annotee.png");
+        if (blob) saveBlob(blob, "annotated-detection.png");
       }, "image/png");
     } catch {
       setError(
-        "Impossible d’exporter cette image. Attendez le chargement du média.",
+        "Could not export the image. Wait for the media to load and try again.",
       );
     }
   }
@@ -468,7 +468,7 @@ export default function App() {
   return (
     <div className="application">
       <a className="skip-link" href="#workspace">
-        Aller à l’analyse
+        Skip to analysis
       </a>
       <header className="header">
         <div className="identity">
@@ -477,21 +477,21 @@ export default function App() {
           </span>
           <div>
             <h1>Student Behavior Detection</h1>
-            <p>Projet de vision par ordinateur</p>
+            <p>Computer vision project</p>
           </div>
         </div>
-        <nav aria-label="Navigation principale">
+        <nav aria-label="Main navigation">
           <button
             aria-current={page === "analysis" ? "page" : undefined}
             onClick={() => navigate("analysis")}
           >
-            Analyse
+            Analysis
           </button>
           <button
             aria-current={page === "about" ? "page" : undefined}
             onClick={() => navigate("about")}
           >
-            Le projet
+            About
           </button>
           <a href={`${REPOSITORY}#readme`} target="_blank" rel="noreferrer">
             README ↗
@@ -503,7 +503,7 @@ export default function App() {
       ) : (
         <main id="workspace">
           <div className="toolbar">
-            <div className="mode-tabs" aria-label="Type de média">
+            <div className="mode-tabs" aria-label="Media type">
               {MODES.map(([key, title]) => (
                 <button
                   key={key}
@@ -515,7 +515,7 @@ export default function App() {
               ))}
             </div>
             <span className="mono muted">
-              {meta ? "Traitement local / YOLOv8" : "Connexion au serveur…"}
+              {meta ? "Local processing / YOLOv8" : "Connecting to server…"}
             </span>
           </div>
           {error && (
@@ -523,7 +523,7 @@ export default function App() {
               <span>{error}</span>
               <button
                 onClick={() => setError("")}
-                aria-label="Fermer le message d’erreur"
+                aria-label="Dismiss error"
               >
                 ×
               </button>
@@ -531,14 +531,14 @@ export default function App() {
           )}
           {meta && !meta.model_available && (
             <div className="notice">
-              Aucun modèle trouvé. Lancez le serveur avec{" "}
+              Model not found. Start the server with{" "}
               <code>--weights models/best_legacy_run.pt</code>.
             </div>
           )}
           <div className="work-grid">
             <section
               className="canvas"
-              aria-label="Aperçu du média"
+              aria-label="Media preview"
               onDragOver={(e) => {
                 e.preventDefault();
                 if (mode !== "camera") setDragging(true);
@@ -553,8 +553,8 @@ export default function App() {
               <div className="canvas-toolbar">
                 <span className="mono filename">
                   {mode === "camera"
-                    ? "Caméra locale"
-                    : file?.name || "Aucun média ouvert"}
+                    ? "Local camera"
+                    : file?.name || "No media open"}
                 </span>
                 <label className="check">
                   <input
@@ -596,7 +596,7 @@ export default function App() {
                         onPause={() => setPlaying(false)}
                         onEnded={() => setPlaying(false)}
                         onError={() => setMediaError(true)}
-                        aria-label="Vidéo à analyser"
+                        aria-label="Video preview"
                       />
                     ) : (
                       <img
@@ -604,8 +604,8 @@ export default function App() {
                         src={liveSource}
                         alt={
                           mode === "camera"
-                            ? "Dernière image analysée de votre caméra"
-                            : "Image chargée pour la détection de comportements"
+                            ? "Latest analyzed camera frame"
+                            : "Image loaded for behavior detection"
                         }
                         onLoad={(e) =>
                           setDimensions({
@@ -615,7 +615,7 @@ export default function App() {
                         }
                         onError={() =>
                           setError(
-                            "Cette image ne peut pas être affichée. Choisissez un autre fichier.",
+                            "Could not display this image. Choose another file.",
                           )
                         }
                       />
@@ -633,7 +633,7 @@ export default function App() {
                               height: `${(d.box[3] - d.box[1]) * 100}%`,
                             }}
                             onClick={() => setSelected(d.id)}
-                            aria-label={`${label(d.class_id)}, confiance ${Math.round(d.confidence * 100)} pour cent`}
+                            aria-label={`${label(d.class_id)}, confidence ${Math.round(d.confidence * 100)} percent`}
                             aria-pressed={chosen?.id === d.id}
                           >
                             {chosen?.id === d.id && (
@@ -661,22 +661,22 @@ export default function App() {
                     </span>
                     <h2>
                       {mode === "camera"
-                        ? "Observer depuis la caméra."
+                        ? "Use your camera"
                         : mode === "video"
-                          ? "Ouvrir une vidéo."
-                          : "Ouvrir une image."}
+                          ? "Open a video"
+                          : "Open an image"}
                     </h2>
                     <p>
                       {mode === "camera"
-                        ? "La caméra démarre uniquement à votre demande."
-                        : "Glissez votre fichier ici, ou choisissez-le sur votre ordinateur."}
+                        ? "The camera starts when you choose Start camera."
+                        : "Drag a file here or choose one from your computer."}
                     </p>
                     {mode !== "camera" && (
                       <button
                         className="button light"
                         onClick={() => input.current.click()}
                       >
-                        Choisir {mode === "image" ? "une image" : "une vidéo"}
+                        {mode === "image" ? "Choose image" : "Choose video"}
                       </button>
                     )}
                     {mode === "image" && meta?.example_available && (
@@ -684,15 +684,15 @@ export default function App() {
                         className="text-button on-dark"
                         onClick={loadExample}
                       >
-                        Essayer avec l’image du projet
+                        Try the sample image
                       </button>
                     )}
                     <small>
                       {mode === "image"
-                        ? "JPG, PNG, WebP, BMP · 25 Mo maximum"
+                        ? "JPG, PNG, WebP, BMP · 25 MB max"
                         : mode === "video"
-                          ? "MP4, MOV, AVI, WebM, MKV · 200 Mo · 10 minutes"
-                          : "Aucun enregistrement des images caméra"}
+                          ? "MP4, MOV, AVI, WebM, MKV · 200 MB · 10 minutes"
+                          : "Camera frames are not saved"}
                     </small>
                   </div>
                 )}
@@ -704,12 +704,12 @@ export default function App() {
                         <progress
                           max="1"
                           value={job.progress}
-                          aria-label="Progression de l’analyse vidéo"
+                          aria-label="Video analysis progress"
                         />
                         <span className="mono">
                           {Math.round(job.progress * 100)} % ·{" "}
                           {job.processed_frames} / {job.total_frames || "—"}{" "}
-                          images
+                          frames
                         </span>
                       </>
                     )}
@@ -717,24 +717,24 @@ export default function App() {
                       className="text-button on-dark"
                       onClick={() => {
                         interrupt();
-                        setPhase("Analyse annulée.");
+                        setPhase("Analysis canceled.");
                         setJob(null);
                       }}
                     >
-                      Annuler
+                      Cancel
                     </button>
                   </div>
                 )}
                 {dragging && (
                   <div className="drop-message">
-                    Déposez le fichier pour l’ouvrir
+                    Drop the file to open it
                   </div>
                 )}
               </div>
               {mediaError && mode === "video" && (
                 <p className="media-hint">
-                  Aperçu indisponible pour ce codec. Lancez l’analyse pour
-                  convertir la vidéo en MP4.
+                  Preview unavailable for this codec. Analyze the video to convert
+                  it to MP4.
                 </p>
               )}
               {mode === "video" && source && (
@@ -746,13 +746,13 @@ export default function App() {
                         video.current?.play().catch(() => setMediaError(true));
                     }}
                     disabled={mediaError}
-                    aria-label={playing ? "Mettre en pause" : "Lire la vidéo"}
+                    aria-label={playing ? "Pause video" : "Play video"}
                   >
-                    {playing ? "Pause" : "Lire"}
+                    {playing ? "Pause" : "Play"}
                   </button>
                   <input
                     type="range"
-                    aria-label="Position dans la vidéo"
+                    aria-label="Video position"
                     min="0"
                     max={Number.isFinite(duration) ? duration : 0}
                     step="0.01"
@@ -768,18 +768,18 @@ export default function App() {
                 <span>
                   {size
                     ? `${size.width} × ${size.height} px`
-                    : "Aperçu du média"}
+                    : "Media preview"}
                 </span>
                 <span>
                   {cameraActive && cameraMs
-                    ? `Aller-retour ${cameraMs} ms`
+                    ? `Round trip ${cameraMs} ms`
                     : current
-                      ? `Inférence ${current.inference_ms} ms`
-                      : "En attente d’une analyse"}
+                      ? `Inference ${current.inference_ms} ms`
+                      : "Waiting for analysis"}
                 </span>
               </div>
             </section>
-            <aside className="inspector" aria-label="Réglages et résultats">
+            <aside className="inspector" aria-label="Settings and results">
               <section>
                 <div className="section-heading">
                   <h2>Source</h2>
@@ -788,28 +788,28 @@ export default function App() {
                       className="text-button"
                       onClick={() => input.current.click()}
                     >
-                      Remplacer
+                      Replace
                     </button>
                   )}
                 </div>
                 <p className="filename source-name">
                   {mode === "camera"
-                    ? "Caméra de cet appareil"
-                    : file?.name || "Aucun fichier"}
+                    ? "This device’s camera"
+                    : file?.name || "No file"}
                 </p>
                 <p className="mono muted">
                   {mode === "camera"
                     ? cameraActive
                       ? "Session active"
-                      : "Caméra arrêtée"
+                      : "Camera stopped"
                     : file
-                      ? `${(file.size / 1024 / 1024).toFixed(2)} Mo${videoResult ? ` · ${formatTime(videoResult.duration)}` : ""}`
-                      : "Importez un média pour commencer."}
+                      ? `${(file.size / 1024 / 1024).toFixed(2)} MB${videoResult ? ` · ${formatTime(videoResult.duration)}` : ""}`
+                      : "Open a file to get started."}
                 </p>
               </section>
               <section>
                 <div className="section-heading">
-                  <h2>Comportements</h2>
+                  <h2>Behaviors</h2>
                   <span className="mono" aria-live="polite">
                     {current ? detections.length : "—"}
                   </span>
@@ -837,13 +837,13 @@ export default function App() {
                 </div>
                 {mode === "video" && (
                   <p className="small muted top-space">
-                    Comptage de l’image affichée, pas de personnes uniques.
+                    Counts show detections in the current frame.
                   </p>
                 )}
               </section>
               <section>
                 <div className="section-heading">
-                  <label htmlFor="confidence">Confiance minimum</label>
+                  <label htmlFor="confidence">Minimum confidence</label>
                   <output className="mono">
                     {Math.round(confidence * 100)} %
                   </output>
@@ -857,24 +857,24 @@ export default function App() {
                   value={confidence}
                   onChange={(e) => setConfidence(Number(e.target.value))}
                 />
-                <p className="mono muted">Filtrer les détections affichées.</p>
+                <p className="mono muted">Filter the visible detections.</p>
               </section>
               <section className="selection">
-                <h2>{chosen ? label(chosen.class_id) : "Aucune sélection"}</h2>
+                <h2>{chosen ? label(chosen.class_id) : "No selection"}</h2>
                 <p className="mono muted">
                   {chosen
-                    ? `Détection ${String(chosen.id + 1).padStart(2, "0")} · confiance ${Math.round(chosen.confidence * 100)} %`
+                    ? `Detection ${String(chosen.id + 1).padStart(2, "0")} · confidence ${Math.round(chosen.confidence * 100)} %`
                     : current
                       ? detections.length
-                        ? "Sélectionnez un cadre dans l’image."
-                        : "Aucune détection pour ces filtres."
-                      : "Les résultats apparaîtront ici."}
+                        ? "Select a box in the image."
+                        : "No detections match these filters."
+                      : "Results will appear here."}
                 </p>
               </section>
               <details className="advanced">
-                <summary>Réglages avancés</summary>
+                <summary>Advanced settings</summary>
                 <label>
-                  Seuil IoU <output>{iou.toFixed(2)}</output>
+                  IoU threshold <output>{iou.toFixed(2)}</output>
                   <input
                     type="range"
                     min="0.1"
@@ -887,20 +887,20 @@ export default function App() {
                 </label>
                 {mode === "video" && (
                   <label>
-                    Images analysées par seconde
+                    Frames analyzed per second
                     <select
                       value={sampleFps}
                       disabled={busy}
                       onChange={(e) => setSampleFps(Number(e.target.value))}
                     >
-                      <option value="2">2 — rapide</option>
-                      <option value="4">4 — équilibré</option>
-                      <option value="8">8 — plus détaillé</option>
+                      <option value="2">2 — fast</option>
+                      <option value="4">4 — balanced</option>
+                      <option value="8">8 — more detail</option>
                     </select>
                   </label>
                 )}
                 <p className="small muted">
-                  Ces réglages s’appliquent à la prochaine analyse.
+                  These settings apply to the next analysis.
                 </p>
               </details>
               <div className="inspector-actions">
@@ -909,10 +909,10 @@ export default function App() {
                     className="button primary"
                     onClick={() => {
                       interrupt();
-                      setPhase("Caméra arrêtée.");
+                      setPhase("Camera stopped.");
                     }}
                   >
-                    Arrêter la caméra
+                    Stop camera
                   </button>
                 ) : (
                   <button
@@ -921,33 +921,33 @@ export default function App() {
                     onClick={mode === "camera" ? startCamera : analyze}
                   >
                     {busy
-                      ? "Traitement en cours…"
+                      ? "Processing…"
                       : mode === "image"
-                        ? "Analyser l’image"
+                        ? "Analyze image"
                         : mode === "video"
-                          ? "Analyser la vidéo"
-                          : "Démarrer la caméra"}
+                          ? "Analyze video"
+                          : "Start camera"}
                   </button>
                 )}
                 <p className="small muted" role="status">
-                  {phase || "Traitement sur votre ordinateur"}
+                  {phase || "Processed on your computer"}
                 </p>
               </div>
             </aside>
           </div>
-          <section className="bottom-panel" aria-label="Résultat et exports">
+          <section className="bottom-panel" aria-label="Results and exports">
             <div className="bottom-heading">
               <h2>
                 {mode === "camera"
-                  ? "Dernière image analysée"
-                  : "Fichier de travail"}
+                  ? "Latest analyzed frame"
+                  : "Current file"}
               </h2>
               {isFinished && (
                 <div className="export-actions">
-                  <button onClick={exportImage}>Image annotée ↓</button>
+                  <button onClick={exportImage}>Annotated image ↓</button>
                   {videoResult && (
                     <a href={`/api/videos/${job.id}/annotated.mp4`} download>
-                      Vidéo annotée ↓
+                      Annotated video ↓
                     </a>
                   )}
                   <button onClick={() => exportData("csv")}>CSV ↓</button>
@@ -959,30 +959,30 @@ export default function App() {
               <table>
                 <thead>
                   <tr>
-                    <th>Média</th>
+                    <th>Media</th>
                     <th className="desktop-column">Dimensions</th>
-                    <th>État</th>
-                    <th>Résultat</th>
+                    <th>Status</th>
+                    <th>Result</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td>{mode === "camera" ? "Caméra" : file?.name || "—"}</td>
+                    <td>{mode === "camera" ? "Camera" : file?.name || "—"}</td>
                     <td className="desktop-column">
                       {size ? `${size.width} × ${size.height}` : "—"}
                     </td>
                     <td>
                       {busy
-                        ? "En cours"
+                        ? "In progress"
                         : isFinished
-                          ? "Analysé"
+                          ? "Analyzed"
                           : file
-                            ? "Prêt"
+                            ? "Ready"
                             : "—"}
                     </td>
                     <td>
                       {current
-                        ? `${detections.length} détection${detections.length > 1 ? "s" : ""}`
+                        ? `${detections.length} detection${detections.length === 1 ? "" : "s"}`
                         : "—"}
                     </td>
                   </tr>
@@ -991,11 +991,11 @@ export default function App() {
             </div>
             {videoResult && (
               <p className="small muted export-note">
-                Vidéo analysée à {videoResult.sample_fps.toFixed(1)} images/s en{" "}
-                {videoResult.processing_seconds.toFixed(1)} s. Les cadres sont
-                conservés jusqu’au prochain échantillon. Export MP4 sans audio,
-                seuil fixé à {Math.round(videoResult.export_confidence * 100)} %
-                lors du traitement. CSV/JSON suivent les filtres actuels.
+                Analyzed at {videoResult.sample_fps.toFixed(1)} frames/s in{" "}
+                {videoResult.processing_seconds.toFixed(1)} s. Boxes stay visible until the
+                next sampled frame. The MP4 has no audio and uses the{" "}
+                {Math.round(videoResult.export_confidence * 100)}% confidence threshold
+                set at analysis time. CSV and JSON exports use the current filters.
               </p>
             )}
           </section>
@@ -1012,7 +1012,7 @@ export default function App() {
               loadFile(e.target.files[0]);
               e.target.value = "";
             }}
-            aria-label="Importer un fichier"
+            aria-label="Open file"
           />
         </main>
       )}
@@ -1027,7 +1027,7 @@ export default function App() {
       <footer className="footer">
         <span>Mohammed Fakir / Mundiapolis</span>
         <span>
-          {meta?.legacy ? "Modèle historique · " : ""}Prédictions à vérifier
+          {meta?.legacy ? "Legacy model · " : ""}Review model predictions
         </span>
       </footer>
     </div>
@@ -1037,65 +1037,59 @@ export default function App() {
 function About({ meta, onBack }) {
   return (
     <main className="about">
-      <span className="mono muted">LE PROJET / YOLOv8</span>
-      <h2>Comprendre les résultats.</h2>
+      <span className="mono muted">ABOUT / YOLOv8</span>
+      <h2>Understanding the results</h2>
       <p>
-        Ce projet universitaire détecte cinq catégories de comportements
-        visibles dans une salle de classe. Les annotations sont des prédictions
-        du modèle, à vérifier dans leur contexte.
+        This university project detects five categories of visible classroom behavior.
+        Review the model’s annotations in context.
       </p>
       <div className="about-columns">
         <section>
-          <h3>Mode d’emploi</h3>
+          <h3>How to use</h3>
           <ol>
-            <li>Importez une image ou une vidéo, ou démarrez la caméra.</li>
-            <li>Lancez l’analyse. Le premier passage charge le modèle.</li>
+            <li>Open an image or video, or start the camera.</li>
+            <li>Run the analysis. The first run loads the model.</li>
             <li>
-              Ajustez la confiance, masquez des classes et sélectionnez les
-              cadres.
+              Adjust the confidence threshold, hide classes, and select detection boxes.
             </li>
-            <li>Exportez les annotations et les résultats.</li>
+            <li>Export the annotations and results.</li>
           </ol>
         </section>
         <section>
-          <h3>Modèle chargé</h3>
+          <h3>Loaded model</h3>
           <p>
-            <code>{meta?.model || "Connexion en cours"}</code>
+            <code>{meta?.model || "Connecting"}</code>
           </p>
           <p>
             {meta?.legacy
-              ? "Poids de l’entraînement historique. Les scores de cette ancienne expérience sont affectés par le découpage des données après augmentation."
-              : "Consultez le README pour connaître les conditions d’entraînement et d’évaluation."}
+              ? "Weights from the original training run. That experiment’s scores were affected by splitting the dataset after augmentation."
+              : "See the README for training and evaluation details."}
           </p>
         </section>
       </div>
       <section>
-        <h3>Ce que les détections ne disent pas</h3>
+        <h3>Detection limits</h3>
         <p>
-          « Concentré », « distrait » et « sommeil » désignent les classes
-          apprises à partir d’indices visuels. Elles ne mesurent pas l’état
-          mental, l’apprentissage ou les capacités d’une personne. Ce modèle a
-          été entraîné sur une seule configuration de classe ; ses prédictions
-          peuvent être erronées.
+          “Focused,” “Distracted,” and “Sleeping” are labels learned from visual cues.
+          They do not measure a person’s mental state, learning, or ability.
+          The model was trained on a single classroom setup and can make mistakes.
         </p>
       </section>
       <section>
-        <h3>Médias et traitement local</h3>
+        <h3>Media and local processing</h3>
         <p>
-          Les images et les instantanés caméra ne sont pas conservés après leur analyse. Les
-          vidéos sont conservées temporairement sur cet ordinateur, pendant la
-          session du serveur (jusqu’à huit analyses, expiration après une heure
-          d’inactivité lors de la prochaine requête). Les sorties vidéo sont
-          réencodées en MP4, sans audio, avec une taille maximale de 1280
-          pixels.
+          The server discards images and camera frames after analysis. It stores up to
+          eight video analyses locally during the server session and clears idle
+          results after an hour on the next request. Video exports are encoded as
+          MP4 without audio, with a maximum size of 1280 pixels.
         </p>
       </section>
       <div className="about-links">
         <button className="button primary" onClick={onBack}>
-          Revenir à l’analyse
+          Back to analysis
         </button>
         <a href={`${REPOSITORY}#readme`} target="_blank" rel="noreferrer">
-          Lire la documentation ↗
+          Read the documentation ↗
         </a>
       </div>
     </main>

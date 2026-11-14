@@ -5,7 +5,7 @@ export async function request(path, options = {}) {
   } catch (error) {
     if (error.name === "AbortError") throw error;
     throw new Error(
-      "Serveur inaccessible. Vérifiez que le serveur Python est lancé.",
+      "Could not reach the server. Check that the Python server is running.",
     );
   }
   if (!response.ok) {
@@ -13,7 +13,7 @@ export async function request(path, options = {}) {
     throw new Error(
       typeof body?.detail === "string"
         ? body.detail
-        : `La requête a échoué (${response.status}).`,
+        : `The request failed (${response.status}).`,
     );
   }
   return response;
